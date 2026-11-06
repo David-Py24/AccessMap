@@ -5,10 +5,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { A11yProvider, useA11y } from './context/A11yContext';
-import { Navbar, ViewMode } from './components/Navbar';
-import { FilterBar, MatchMode, SortOption } from './components/FilterBar';
+import { SidebarRail } from './components/SidebarRail';
+import { PlacesPanel } from './components/PlacesPanel';
 import { MapView } from './components/MapView';
-import { LocationCard } from './components/LocationCard';
 import { LocationDetailDrawer } from './components/LocationDetailDrawer';
 import { AddLocationModal } from './components/AddLocationModal';
 import { AIStorefrontModal } from './components/AIStorefrontModal';
@@ -25,16 +24,8 @@ import {
   resetToSeedData,
   getStoredUserVotes,
   saveStoredUserVote,
-  calculateDistanceKm,
 } from './utils/storage';
-import {
-  MapPin,
-  Sparkles,
-  Plus,
-  ShieldCheck,
-  RotateCcw,
-  Info,
-} from 'lucide-react';
+import { MapPin, Sparkles, Plus, Layers } from 'lucide-react';
 
 function AccessMapApp() {
   const { announce } = useA11y();
@@ -43,7 +34,6 @@ function AccessMapApp() {
   const [locations, setLocations] = useState<LocationPin[]>(() => {
     const loaded = loadLocations();
     const storedVotes = getStoredUserVotes();
-    // Hydrate user votes
     return loaded.map((loc) => ({
       ...loc,
       tags: loc.tags.map((tag) => {
@@ -56,19 +46,24 @@ function AccessMapApp() {
     }));
   });
 
-  // Selected Location for details drawer
-  const [selectedLocation, setSelectedLocation] = useState<LocationPin | null>(null);
+  // Selected Location
+  const [selectedLocation, setSelectedLocation] = useState<LocationPin | null>(() => {
+    return locations.length > 0 ? locations[0] : null;
+  });
 
-  // View mode
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  // Detail Drawer Visibility (full drawer with voting & review form)
+  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
 
-  // Search & Filtering State
+  // Active navigation tab
+  const [activeNavTab, setActiveNavTab] = useState<'map' | 'saved'>('map');
+
+  // Mobile / Filter panel toggle
+  const [isPlacesPanelOpen, setIsPlacesPanelOpen] = useState(true);
+
+  // Search & Tag Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | 'All'>('All');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [matchMode, setMatchMode] = useState<MatchMode>('and');
-  const [minRating, setMinRating] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<SortOption>('rating_desc');
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Add Location Flow State
@@ -88,7 +83,7 @@ function AccessMapApp() {
     barriers?: string[];
   } | null>(null);
 
-  // Save locations to localStorage whenever modified
+  // Helper to persist updates
   const updateAndSaveLocations = (updater: (prev: LocationPin[]) => LocationPin[]) => {
     setLocations((prev) => {
       const next = updater(prev);
@@ -120,14 +115,12 @@ function AccessMapApp() {
             const prevVote = tag.userVoted;
 
             if (prevVote === vote) {
-              // Toggling off the current vote
               if (vote === 'confirm') conf = Math.max(0, conf - 1);
               if (vote === 'dispute') disp = Math.max(0, disp - 1);
               saveStoredUserVote(pinId, tagName, null);
               return { ...tag, confirmations: conf, disputes: disp, userVoted: undefined };
             }
 
-            // Switching vote or new vote
             if (prevVote === 'confirm') conf = Math.max(0, conf - 1);
             if (prevVote === 'dispute') disp = Math.max(0, disp - 1);
 
@@ -160,7 +153,6 @@ function AccessMapApp() {
           loc.averageRating * loc.totalReviews + reviewInput.rating;
         const newAvg = Math.round((totalRatingSum / newTotalReviews) * 10) / 10;
 
-        // Also update specific tag ratings if provided in the review
         const updatedTags = loc.tags.map((tag) => {
           if (reviewInput.tagRatings && reviewInput.tagRatings[tag.name]) {
             const given = reviewInput.tagRatings[tag.name];
@@ -252,11 +244,20 @@ function AccessMapApp() {
     setAiNewPinData(null);
   };
 
-  // Filter & Search Logic
+  // Reset to seed data
+  const handleResetData = () => {
+    if (window.confirm('Reset all AccessMap pins to initial Cagayan de Oro seed places?')) {
+      const reset = resetToSeedData();
+      setLocations(reset);
+      setSelectedLocation(reset[0] || null);
+      announce('Database reset to Cagayan de Oro seed data.');
+    }
+  };
+
+  // Filter locations
   const filteredLocations = useMemo(() => {
     let result = [...locations];
 
-    // Search query filter (matches name, address, category, or tag names)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -268,97 +269,55 @@ function AccessMapApp() {
       );
     }
 
-    // Category filter
     if (selectedCategory !== 'All') {
       result = result.filter((loc) => loc.category === selectedCategory);
     }
 
-    // Accessibility tags filter (AND / OR match mode)
     if (selectedTags.length > 0) {
-      if (matchMode === 'and') {
-        result = result.filter((loc) => {
-          const locTagNames = loc.tags.map((t) => t.name);
-          return selectedTags.every((t) => locTagNames.includes(t));
-        });
-      } else {
-        result = result.filter((loc) => {
-          const locTagNames = loc.tags.map((t) => t.name);
-          return selectedTags.some((t) => locTagNames.includes(t));
-        });
-      }
+      result = result.filter((loc) => {
+        const locTagNames = loc.tags.map((t) => t.name);
+        return selectedTags.every((t) => locTagNames.includes(t));
+      });
     }
-
-    // Rating filter
-    if (minRating > 0) {
-      result = result.filter((loc) => loc.averageRating >= minRating);
-    }
-
-    // Sorting
-    result.sort((a, b) => {
-      if (sortBy === 'rating_desc') {
-        return b.averageRating - a.averageRating;
-      }
-      if (sortBy === 'rating_asc') {
-        return a.averageRating - b.averageRating;
-      }
-      if (sortBy === 'reviews_desc') {
-        return b.totalReviews - a.totalReviews;
-      }
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      }
-      if (sortBy === 'distance') {
-        const refLat = userCoords ? userCoords.lat : 8.4822;
-        const refLng = userCoords ? userCoords.lng : 124.6473;
-        const distA = calculateDistanceKm(refLat, refLng, a.lat, a.lng);
-        const distB = calculateDistanceKm(refLat, refLng, b.lat, b.lng);
-        return distA - distB;
-      }
-      return 0;
-    });
 
     return result;
-  }, [
-    locations,
-    searchQuery,
-    selectedCategory,
-    selectedTags,
-    matchMode,
-    minRating,
-    sortBy,
-    userCoords,
-  ]);
-
-  const handleResetData = () => {
-    if (window.confirm('Reset all AccessMap pins to initial Cagayan de Oro sample seed data?')) {
-      const reset = resetToSeedData();
-      setLocations(reset);
-      setSelectedLocation(null);
-      announce('AccessMap database reset to initial seed locations.');
-    }
-  };
+  }, [locations, searchQuery, selectedCategory, selectedTags]);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
-      {/* Top Navigation */}
-      <Navbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+    <div className="flex h-screen w-screen bg-[#f1f5f9] text-slate-900 overflow-hidden font-sans">
+      {/* Far Left Navigation Rail (Matching Reference UI rail) */}
+      <SidebarRail
+        activeTab={activeNavTab}
+        onTabChange={setActiveNavTab}
+        onOpenAIAnalyzer={() => {
+          setAiTargetLocation(null);
+          setIsAIModalOpen(true);
+        }}
         onOpenAddModal={() => {
           setIsAddingLocation(true);
           setNewPinCoords({ lat: 8.4822, lng: 124.6473 });
           setIsAddModalOpen(true);
         }}
-        onOpenAIAnalyzer={() => {
-          setAiTargetLocation(null);
-          setIsAIModalOpen(true);
-        }}
         onResetData={handleResetData}
-        totalLocations={locations.length}
+        onToggleFilterPanel={() => setIsPlacesPanelOpen(!isPlacesPanelOpen)}
+        isFilterPanelOpen={isPlacesPanelOpen}
       />
 
-      {/* Filter and Search Bar */}
-      <FilterBar
+      {/* Floating / Docked Places Panel (Matching Reference UI "Packages" panel) */}
+      <PlacesPanel
+        locations={filteredLocations}
+        selectedLocation={selectedLocation}
+        onSelectLocation={(loc) => {
+          setSelectedLocation(loc);
+        }}
+        onOpenDetails={(loc) => {
+          setSelectedLocation(loc);
+          setIsDetailDrawerOpen(true);
+        }}
+        onRunAIScan={(loc) => {
+          setAiTargetLocation(loc);
+          setIsAIModalOpen(true);
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
@@ -370,121 +329,56 @@ function AccessMapApp() {
           );
         }}
         onClearTags={() => setSelectedTags([])}
-        matchMode={matchMode}
-        onMatchModeChange={setMatchMode}
-        minRating={minRating}
-        onMinRatingChange={setMinRating}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        totalFiltered={filteredLocations.length}
-        totalTotal={locations.length}
+        userCoords={userCoords}
+        onResetData={handleResetData}
+        isOpen={isPlacesPanelOpen}
       />
 
-      {/* Main Workspace Area (Split / Map / List) */}
-      <main className="flex-1 relative flex overflow-hidden">
-        {/* Left Side List View (Visible in 'split' or 'list' mode) */}
-        {(viewMode === 'split' || viewMode === 'list') && (
-          <section
-            aria-label="Location listings"
-            className={`${
-              viewMode === 'list' ? 'w-full' : 'w-full md:w-[420px] lg:w-[460px]'
-            } h-full bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 z-10`}
-          >
-            {/* Header info */}
-            <div className="p-3 bg-white border-b border-slate-200 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-800">
-                {filteredLocations.length} Location{filteredLocations.length === 1 ? '' : 's'} Found
-              </span>
-              <button
-                type="button"
-                onClick={handleResetData}
-                className="hover:text-sky-700 flex items-center gap-1 cursor-pointer"
-                title="Reset to Cagayan de Oro seed places"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Demo Data</span>
-              </button>
-            </div>
-
-            {/* Scrollable Cards List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-              {filteredLocations.length === 0 ? (
-                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                    <MapPin className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">
-                      No locations match current filters
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Try clearing selected accessibility tags or widening your search terms.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('All');
-                      setSelectedTags([]);
-                      setMinRating(0);
-                    }}
-                    className="px-4 py-2 bg-sky-600 text-white rounded-xl text-xs font-bold hover:bg-sky-700 transition-colors"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
-              ) : (
-                filteredLocations.map((loc) => (
-                  <LocationCard
-                    key={loc.id}
-                    location={loc}
-                    isSelected={selectedLocation?.id === loc.id}
-                    onSelect={(selected) => {
-                      setSelectedLocation(selected);
-                      // On mobile list mode, switch to split or map to view pin
-                      if (window.innerWidth < 768 && viewMode === 'list') {
-                        setViewMode('split');
-                      }
-                    }}
-                    userCoords={userCoords}
-                  />
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Right Side Map View (Visible in 'split' or 'map' mode) */}
-        {(viewMode === 'split' || viewMode === 'map') && (
-          <div className="flex-1 h-full relative">
-            <MapView
-              locations={filteredLocations}
-              selectedLocation={selectedLocation}
-              onSelectLocation={(loc) => setSelectedLocation(loc)}
-              isAddingLocation={isAddingLocation}
-              newPinCoords={newPinCoords}
-              onNewPinCoordsChange={(coords) => {
-                setNewPinCoords(coords);
-                if (isAddingLocation) {
-                  setIsAddModalOpen(true);
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {/* Location Detail Drawer (Slide-out panel) */}
-        <LocationDetailDrawer
-          location={selectedLocation}
-          onClose={() => setSelectedLocation(null)}
-          onVoteTag={handleVoteTag}
-          onAddReview={handleAddReview}
-          onRunAIScanOnPin={(loc) => {
-            setAiTargetLocation(loc);
-            setIsAIModalOpen(true);
+      {/* Main Map Canvas Area */}
+      <main className="flex-1 h-full relative overflow-hidden bg-slate-200">
+        <MapView
+          locations={filteredLocations}
+          selectedLocation={selectedLocation}
+          onSelectLocation={(loc) => {
+            setSelectedLocation(loc);
+          }}
+          onOpenDetails={(loc) => {
+            setSelectedLocation(loc);
+            setIsDetailDrawerOpen(true);
+          }}
+          isAddingLocation={isAddingLocation}
+          newPinCoords={newPinCoords}
+          onNewPinCoordsChange={(coords) => {
+            setNewPinCoords(coords);
+            if (isAddingLocation) {
+              setIsAddModalOpen(true);
+            }
           }}
         />
+
+        {/* Mobile toggle button for places panel */}
+        <button
+          type="button"
+          onClick={() => setIsPlacesPanelOpen(!isPlacesPanelOpen)}
+          className="md:hidden absolute bottom-24 right-5 z-[550] px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-full shadow-xl flex items-center gap-1.5 cursor-pointer"
+        >
+          <Layers className="w-4 h-4" />
+          <span>{isPlacesPanelOpen ? 'Hide List' : 'Show List'}</span>
+        </button>
+
+        {/* Full Details Slide-out Drawer */}
+        {isDetailDrawerOpen && (
+          <LocationDetailDrawer
+            location={selectedLocation}
+            onClose={() => setIsDetailDrawerOpen(false)}
+            onVoteTag={handleVoteTag}
+            onAddReview={handleAddReview}
+            onRunAIScanOnPin={(loc) => {
+              setAiTargetLocation(loc);
+              setIsAIModalOpen(true);
+            }}
+          />
+        )}
 
         {/* Add Location Modal */}
         <AddLocationModal

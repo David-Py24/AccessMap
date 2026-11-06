@@ -8,12 +8,22 @@ import L from 'leaflet';
 import { LocationPin } from '../types/accessibility';
 import { getRatingColor } from '../utils/storage';
 import { useA11y } from '../context/A11yContext';
-import { Crosshair, Locate, MapPin, ZoomIn, ZoomOut, Layers, RefreshCw } from 'lucide-react';
+import { MapFloatingCard } from './MapFloatingCard';
+import {
+  Crosshair,
+  Locate,
+  MapPin,
+  ZoomIn,
+  ZoomOut,
+  Layers,
+  Search,
+} from 'lucide-react';
 
 interface MapViewProps {
   locations: LocationPin[];
   selectedLocation: LocationPin | null;
   onSelectLocation: (loc: LocationPin) => void;
+  onOpenDetails: (loc: LocationPin) => void;
   isAddingLocation: boolean;
   newPinCoords: { lat: number; lng: number } | null;
   onNewPinCoordsChange: (coords: { lat: number; lng: number }) => void;
@@ -27,6 +37,7 @@ export const MapView: React.FC<MapViewProps> = ({
   locations,
   selectedLocation,
   onSelectLocation,
+  onOpenDetails,
   isAddingLocation,
   newPinCoords,
   onNewPinCoordsChange,
@@ -41,6 +52,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const { highContrast, announce } = useA11y();
   const [isLocating, setIsLocating] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showSummaryCard, setShowSummaryCard] = useState(true);
 
   // Initialize Map
   useEffect(() => {
@@ -49,20 +61,20 @@ export const MapView: React.FC<MapViewProps> = ({
     const map = L.map(mapContainerRef.current, {
       center: CDO_CENTER,
       zoom: DEFAULT_ZOOM,
-      zoomControl: false, // We supply custom accessible controls
+      zoomControl: false, // Custom controls
     });
 
     mapInstanceRef.current = map;
 
-    // Add Tile layer
+    // Clean light Carto Positron tiles matching reference UI
     const tileUrl = highContrast
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
     const tileLayer = L.tileLayer(tileUrl, {
       maxZoom: 19,
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
@@ -95,12 +107,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
     const tileUrl = highContrast
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
     const newLayer = L.tileLayer(tileUrl, {
       maxZoom: 19,
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
     }).addTo(map);
 
     tileLayerRef.current = newLayer;
@@ -121,7 +133,7 @@ export const MapView: React.FC<MapViewProps> = ({
       // Custom Accessible Pin HTML
       const pinHtml = `
         <div 
-          class="pin-bubble ${isSelected ? 'ring-4 ring-sky-500 scale-125 z-50' : ''}" 
+          class="pin-bubble ${isSelected ? 'ring-4 ring-slate-900 scale-125 z-50' : ''}" 
           style="
             background: ${colorMeta.hex}; 
             color: #ffffff; 
@@ -134,7 +146,7 @@ export const MapView: React.FC<MapViewProps> = ({
             font-weight: 700; 
             font-size: 11px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
           "
           title="${loc.name} (${colorMeta.label}: ${ratingText}★)"
           aria-label="${loc.name}, Rating: ${ratingText} out of 5 stars"
@@ -158,6 +170,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       marker.on('click', () => {
         onSelectLocation(loc);
+        setShowSummaryCard(true);
         announce(`Selected location: ${loc.name}, rated ${ratingText} stars.`);
       });
 
@@ -173,6 +186,7 @@ export const MapView: React.FC<MapViewProps> = ({
         Math.max(mapInstanceRef.current.getZoom(), 16),
         { duration: 0.8 }
       );
+      setShowSummaryCard(true);
     }
   }, [selectedLocation]);
 
@@ -217,7 +231,7 @@ export const MapView: React.FC<MapViewProps> = ({
         marker.on('dragend', () => {
           const pos = marker.getLatLng();
           onNewPinCoordsChange({ lat: pos.lat, lng: pos.lng });
-          announce(`Pin dragged to latitude ${pos.lat.toFixed(4)}, longitude ${pos.lng.toFixed(4)}`);
+          announce(`Pin placed at lat ${pos.lat.toFixed(4)}, lng ${pos.lng.toFixed(4)}`);
         });
 
         newPinMarkerRef.current = marker;
@@ -252,7 +266,6 @@ export const MapView: React.FC<MapViewProps> = ({
           const map = mapInstanceRef.current;
           userLocationLayerRef.current.clearLayers();
 
-          // User Pulse Ring
           const userIcon = L.divIcon({
             className: 'custom-pin-marker',
             html: `
@@ -282,7 +295,6 @@ export const MapView: React.FC<MapViewProps> = ({
     );
   };
 
-  // Reset to CDO Center
   const handleResetCenter = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo(CDO_CENTER, DEFAULT_ZOOM, { duration: 0.8 });
@@ -291,102 +303,101 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const handleZoomIn = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.zoomIn();
-    }
+    if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
   };
 
   const handleZoomOut = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.zoomOut();
-    }
+    if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
   };
 
+  const activeCardLocation = selectedLocation || (locations.length > 0 ? locations[0] : null);
+
   return (
-    <div className="relative w-full h-full flex flex-col bg-slate-100 overflow-hidden">
+    <div className="relative w-full h-full flex flex-col bg-[#e5e5e5] overflow-hidden select-none">
       {/* Interactive Leaflet container */}
       <div
         ref={mapContainerRef}
         className="w-full h-full min-h-[350px]"
         tabIndex={0}
-        aria-label="Interactive Accessibility Map of Cagayan de Oro. Use arrow keys to pan, plus and minus to zoom."
+        aria-label="Interactive Accessibility Map of Cagayan de Oro"
       />
 
-      {/* Floating Accessible Map Controls */}
-      <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
+      {/* Prominent City Header Title Watermark (Matching 📍 Stockholm in Reference UI) */}
+      <div className="absolute top-5 left-5 sm:left-7 z-[500] pointer-events-none select-none flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold text-sm shadow-lg pointer-events-auto">
+          <MapPin className="w-4 h-4 text-white" />
+        </div>
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 drop-shadow-xs">
+            Cagayan de Oro
+          </h2>
+        </div>
+      </div>
+
+      {/* Floating Map Controls in Top Right (Matching Reference UI buttons) */}
+      <div className="absolute top-5 right-5 sm:right-7 z-[500] flex items-center gap-2">
         <button
           type="button"
           onClick={handleLocateMe}
           disabled={isLocating}
-          className="w-11 h-11 bg-white hover:bg-slate-50 text-slate-800 rounded-xl shadow-lg border border-slate-200 flex items-center justify-center transition-transform active:scale-95 focus:outline-2 focus:outline-sky-600 cursor-pointer"
+          className="w-10 h-10 bg-white/95 backdrop-blur-xs hover:bg-white text-slate-800 rounded-2xl shadow-md border border-slate-200/90 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
           title="Locate me (GPS)"
           aria-label="Locate me using GPS"
         >
-          <Locate className={`w-5 h-5 ${isLocating ? 'animate-spin text-sky-600' : 'text-slate-700'}`} />
+          <Locate className={`w-4 h-4 ${isLocating ? 'animate-spin text-sky-600' : 'text-slate-700'}`} />
         </button>
 
         <button
           type="button"
           onClick={handleResetCenter}
-          className="w-11 h-11 bg-white hover:bg-slate-50 text-slate-800 rounded-xl shadow-lg border border-slate-200 flex items-center justify-center transition-transform active:scale-95 focus:outline-2 focus:outline-sky-600 cursor-pointer"
+          className="w-10 h-10 bg-white/95 backdrop-blur-xs hover:bg-white text-slate-800 rounded-2xl shadow-md border border-slate-200/90 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
           title="Center on Cagayan de Oro"
-          aria-label="Reset map view to Cagayan de Oro center"
+          aria-label="Reset map view"
         >
-          <Crosshair className="w-5 h-5 text-slate-700" />
+          <Crosshair className="w-4 h-4 text-slate-700" />
         </button>
 
-        <div className="flex flex-col bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div className="flex items-center bg-white/95 backdrop-blur-xs rounded-2xl shadow-md border border-slate-200/90 overflow-hidden">
           <button
             type="button"
             onClick={handleZoomIn}
-            className="w-11 h-11 hover:bg-slate-50 text-slate-800 flex items-center justify-center border-b border-slate-200 transition-colors focus:outline-2 focus:outline-sky-600 cursor-pointer"
+            className="w-10 h-10 hover:bg-slate-50 text-slate-800 flex items-center justify-center border-r border-slate-200/80 transition-colors cursor-pointer"
             title="Zoom in"
             aria-label="Zoom in"
           >
-            <ZoomIn className="w-5 h-5 text-slate-700" />
+            <ZoomIn className="w-4 h-4 text-slate-700" />
           </button>
           <button
             type="button"
             onClick={handleZoomOut}
-            className="w-11 h-11 hover:bg-slate-50 text-slate-800 flex items-center justify-center transition-colors focus:outline-2 focus:outline-sky-600 cursor-pointer"
+            className="w-10 h-10 hover:bg-slate-50 text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
             title="Zoom out"
             aria-label="Zoom out"
           >
-            <ZoomOut className="w-5 h-5 text-slate-700" />
+            <ZoomOut className="w-4 h-4 text-slate-700" />
           </button>
         </div>
       </div>
 
       {/* Adding pin guide banner */}
       {isAddingLocation && (
-        <div className="absolute top-4 left-4 right-16 md:right-auto md:max-w-md z-[500] bg-amber-500 text-amber-950 px-4 py-2.5 rounded-xl shadow-lg border border-amber-600 flex items-center gap-3 animate-fade-in">
+        <div className="absolute top-20 left-6 z-[500] bg-amber-500 text-amber-950 px-4 py-2.5 rounded-2xl shadow-xl border border-amber-600 flex items-center gap-3 animate-fade-in">
           <MapPin className="w-5 h-5 shrink-0 text-amber-950 animate-bounce" />
-          <p className="text-xs md:text-sm font-semibold">
+          <p className="text-xs sm:text-sm font-bold">
             Click anywhere on the map or drag the gold marker to position your new location pin.
           </p>
         </div>
       )}
 
-      {/* Accessible Map Legend */}
-      <div className="absolute bottom-4 left-4 z-[500] bg-white/95 backdrop-blur-sm px-3.5 py-2.5 rounded-xl shadow-md border border-slate-200 text-xs text-slate-700 hidden sm:flex items-center gap-4">
-        <span className="font-semibold text-slate-900">Accessibility:</span>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700 inline-block" />
-          <span>High (4.0–5.0)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 inline-block" />
-          <span>Mid (2.5–3.9)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-rose-600 border border-rose-700 inline-block" />
-          <span>Low (&lt;2.5)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500 inline-block" />
-          <span>Unrated</span>
-        </div>
-      </div>
+      {/* Floating Bottom Details Card (Recreating bottom card from Reference UI) */}
+      {showSummaryCard && activeCardLocation && !isAddingLocation && (
+        <MapFloatingCard
+          location={activeCardLocation}
+          onOpenDetails={onOpenDetails}
+          onClose={() => setShowSummaryCard(false)}
+          userCoords={userCoords}
+        />
+      )}
     </div>
   );
 };

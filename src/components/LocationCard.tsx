@@ -7,12 +7,25 @@ import React from 'react';
 import { LocationPin } from '../types/accessibility';
 import { getRatingColor, calculateDistanceKm } from '../utils/storage';
 import { getTagIcon } from '../utils/tagHelpers';
-import { ShieldCheck, Sparkles, Star, MapPin } from 'lucide-react';
+import {
+  ShieldCheck,
+  Sparkles,
+  Star,
+  MapPin,
+  ChevronDown,
+  MessageSquare,
+  ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
+  User,
+} from 'lucide-react';
 
 interface LocationCardProps {
   location: LocationPin;
   isSelected: boolean;
   onSelect: (loc: LocationPin) => void;
+  onOpenDetails: (loc: LocationPin) => void;
+  onRunAIScan: (loc: LocationPin) => void;
   userCoords?: { lat: number; lng: number } | null;
 }
 
@@ -20,14 +33,185 @@ export const LocationCard: React.FC<LocationCardProps> = ({
   location,
   isSelected,
   onSelect,
+  onOpenDetails,
+  onRunAIScan,
   userCoords,
 }) => {
   const ratingMeta = getRatingColor(location.averageRating, location.totalReviews);
 
   const distanceKm = userCoords
     ? calculateDistanceKm(userCoords.lat, userCoords.lng, location.lat, location.lng)
-    : null;
+    : calculateDistanceKm(8.4822, 124.6473, location.lat, location.lng);
 
+  const isCommunityVerified =
+    location.tags.some((t) => t.confirmations >= 2 && t.confirmations > t.disputes) &&
+    location.averageRating >= 4.0;
+
+  const verifiedTagCount = location.tags.filter(
+    (t) => t.confirmations >= 2 && t.confirmations > t.disputes
+  ).length;
+
+  const topContributor =
+    location.reviews && location.reviews.length > 0
+      ? location.reviews[0].authorName
+      : 'Community Volunteer';
+
+  // If selected, render the prominent expanded card matching the reference UI
+  if (isSelected) {
+    return (
+      <article
+        onClick={() => onSelect(location)}
+        className="w-full bg-white rounded-3xl border-2 border-slate-900 shadow-xl p-4 sm:p-5 transition-all cursor-pointer relative animate-scale-up"
+        role="region"
+        aria-label={`Selected location: ${location.name}`}
+      >
+        {/* Top Place Name & Status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
+              {location.name}
+            </h3>
+            <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+              CDO-{location.id.replace('cdo-', '').toUpperCase()}
+            </p>
+          </div>
+        </div>
+
+        {/* Status Pill Badge (Vivid lime/chartreuse or purple) */}
+        <div className="mt-3 flex items-center justify-start">
+          {isCommunityVerified ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide bg-[#bef264] text-slate-950 uppercase shadow-2xs">
+              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+              <span>VERIFIED ACCESS</span>
+            </span>
+          ) : location.aiSummary ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-purple-100 text-purple-900 border border-purple-200 uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-purple-700" />
+              <span>AI STOREFRONT SCAN</span>
+            </span>
+          ) : location.averageRating < 2.5 && location.averageRating > 0 ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide bg-rose-100 text-rose-800 border border-rose-200 uppercase">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
+              <span>BARRIER REPORTED</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-slate-100 text-slate-800 uppercase">
+              <span>{location.averageRating > 0 ? 'COMMUNITY RATED' : 'UNRATED PLACE'}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Progress / Rating indicator bar */}
+        <div className="mt-3.5 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+          <div
+            className="bg-gradient-to-r from-lime-400 to-emerald-500 h-full rounded-full"
+            style={{
+              width: `${Math.min(100, Math.max(15, (location.averageRating / 5) * 100))}%`,
+            }}
+          />
+        </div>
+
+        {/* 4-Column Metric Grid matching the reference UI */}
+        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-4 gap-2 text-left">
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Category
+            </span>
+            <span className="block text-xs font-bold text-slate-800 truncate mt-0.5">
+              {location.category.split(' ')[0]}
+            </span>
+          </div>
+
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Score
+            </span>
+            <span className="block text-xs font-bold text-slate-800 truncate mt-0.5">
+              {location.averageRating > 0 ? `${location.averageRating.toFixed(1)} ★` : '–'}
+            </span>
+          </div>
+
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Distance
+            </span>
+            <span className="block text-xs font-bold text-slate-800 truncate mt-0.5">
+              {distanceKm} km
+            </span>
+          </div>
+
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Verified
+            </span>
+            <span className="block text-xs font-bold text-slate-800 truncate mt-0.5">
+              {verifiedTagCount} Tags
+            </span>
+          </div>
+        </div>
+
+        {/* Reviewer / Contributor Row matching the reference */}
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+              {topContributor.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                Auditor
+              </span>
+              <span className="block text-xs font-bold text-slate-800 truncate">
+                {topContributor}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Action Circle Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRunAIScan(location);
+              }}
+              className="w-8 h-8 rounded-full border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 flex items-center justify-center transition-colors cursor-pointer"
+              title="Run Gemini AI Storefront Scan"
+              aria-label="Run Gemini AI Storefront Scan on this location"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            </button>
+
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-8 h-8 rounded-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              title="Open directions"
+              aria-label="Open Google Maps directions"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+
+        {/* Accordion / Details button at bottom of active card */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetails(location);
+          }}
+          className="mt-3.5 pt-3 border-t border-slate-100 w-full flex items-center justify-between text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
+        >
+          <span>Accessibility tags & community reviews</span>
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        </button>
+      </article>
+    );
+  }
+
+  // Normal Inactive Card matching the reference list items
   return (
     <article
       onClick={() => onSelect(location)}
@@ -39,85 +223,44 @@ export const LocationCard: React.FC<LocationCardProps> = ({
       }}
       tabIndex={0}
       role="button"
-      aria-label={`${location.name}, ${location.category}, rated ${
+      aria-label={`${location.name}, ${location.category}, rating ${
         location.averageRating > 0 ? location.averageRating.toFixed(1) : 'unrated'
-      } stars. Click to open details.`}
-      className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer text-left focus:outline-2 focus:outline-sky-600 ${
-        isSelected
-          ? 'bg-sky-50/60 border-sky-400 shadow-md ring-2 ring-sky-300'
-          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
       }`}
+      className="w-full bg-white rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-xs p-4 flex items-center justify-between gap-3 transition-all cursor-pointer text-left focus:outline-2 focus:outline-sky-600"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {/* Category & Distance */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              {location.category}
-            </span>
-            {distanceKm !== null && (
-              <span className="text-[11px] text-slate-400 flex items-center gap-0.5">
-                <MapPin className="w-3 h-3 text-slate-400" />
-                {distanceKm} km away
-              </span>
-            )}
-          </div>
-
-          {/* Place Name */}
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
-            {location.name}
-          </h3>
-
-          <p className="text-xs text-slate-500 truncate mt-0.5">
-            {location.address}
-          </p>
-        </div>
-
-        {/* Rating Badge */}
-        <div
-          className={`shrink-0 px-2.5 py-1 rounded-xl flex items-center gap-1 font-bold text-xs ${ratingMeta.bgClass} text-white shadow-xs`}
-          title={`Average Accessibility: ${ratingMeta.label}`}
-        >
-          <Star className="w-3 h-3 fill-white" />
-          <span>{location.averageRating > 0 ? location.averageRating.toFixed(1) : 'New'}</span>
+      <div className="min-w-0 flex-1">
+        <h4 className="text-sm font-bold text-slate-900 truncate">
+          {location.name}
+        </h4>
+        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+          <span className="font-medium text-slate-600">{location.category}</span>
+          <span>•</span>
+          <span className="font-mono text-slate-400">
+            {distanceKm} km away
+          </span>
         </div>
       </div>
 
-      {/* Tags preview */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {location.tags.slice(0, 3).map((tag) => {
-          const isVerified = tag.confirmations >= 2 && tag.confirmations > tag.disputes;
-          return (
-            <span
-              key={tag.name}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
-                isVerified
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : tag.isAiSuggested
-                  ? 'bg-purple-50 text-purple-800 border-purple-200'
-                  : 'bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              {getTagIcon(tag.name)}
-              <span className="truncate max-w-[130px]">{tag.name}</span>
-              {isVerified && <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />}
-              {tag.isAiSuggested && <Sparkles className="w-3 h-3 text-purple-600 shrink-0" />}
-            </span>
-          );
-        })}
-        {location.tags.length > 3 && (
-          <span className="text-[11px] text-slate-400 self-center font-medium">
-            +{location.tags.length - 3} more
+      {/* Status Pill on the Right */}
+      <div className="shrink-0">
+        {isCommunityVerified ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide bg-[#bef264] text-slate-950 uppercase shadow-2xs">
+            VERIFIED
+          </span>
+        ) : location.aiSummary ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-purple-100 text-purple-900 uppercase">
+            AI-SCAN
+          </span>
+        ) : location.averageRating < 2.5 && location.averageRating > 0 ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-rose-100 text-rose-800 uppercase">
+            BARRIERS
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-slate-100 text-slate-700">
+            {location.averageRating > 0 ? `${location.averageRating.toFixed(1)} ★` : 'PENDING'}
           </span>
         )}
       </div>
-
-      {/* Barriers snippet if any */}
-      {location.aiBarriers && location.aiBarriers.length > 0 && (
-        <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200 truncate">
-          ⚠️ Note: {location.aiBarriers[0]}
-        </div>
-      )}
     </article>
   );
 };
