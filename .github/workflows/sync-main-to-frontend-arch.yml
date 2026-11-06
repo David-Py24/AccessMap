@@ -1,0 +1,43 @@
+name: Sync main -> AccessMap-Frontend-Architecture
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+concurrency:
+  group: sync-main-to-frontend-arch
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Open PR if main is ahead
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git fetch origin main AccessMap-Frontend-Architecture
+          AHEAD=$(git rev-list --count origin/AccessMap-Frontend-Architecture..origin/main)
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "Nothing to sync (main is not ahead)."
+            exit 0
+          fi
+          EXISTING=$(gh pr list --base AccessMap-Frontend-Architecture --head main --state open --json number -q '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already open; branch updates will refresh it."
+            exit 0
+          fi
+          gh pr create \
+            --base AccessMap-Frontend-Architecture \
+            --head main \
+            --title "Sync main (frontend) into AccessMap-Frontend-Architecture" \
+            --body "Automated PR to bring frontend changes from \`main\` (Google AI Studio) into the \`AccessMap-Frontend-Architecture\` branch. Review and merge manually."
