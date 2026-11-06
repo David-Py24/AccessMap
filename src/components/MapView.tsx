@@ -16,7 +16,7 @@ import {
   ZoomIn,
   ZoomOut,
   Layers,
-  Search,
+  Check,
 } from 'lucide-react';
 
 interface MapViewProps {
@@ -28,6 +28,51 @@ interface MapViewProps {
   newPinCoords: { lat: number; lng: number } | null;
   onNewPinCoordsChange: (coords: { lat: number; lng: number }) => void;
 }
+
+export type MapTileStyle = 'osm' | 'positron' | 'dark' | 'hot';
+
+interface TileConfig {
+  name: string;
+  label: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+}
+
+const TILE_CONFIGS: Record<MapTileStyle, TileConfig> = {
+  osm: {
+    name: 'OpenStreetMap (Standard)',
+    label: 'Standard OSM',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
+  positron: {
+    name: 'Carto Positron (Clean Light)',
+    label: 'Minimalist Light',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19,
+  },
+  dark: {
+    name: 'Carto Dark (High Contrast)',
+    label: 'Dark Mode',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19,
+  },
+  hot: {
+    name: 'OpenStreetMap Humanitarian',
+    label: 'Humanitarian OSM',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by Humanitarian OSM Team',
+    maxZoom: 19,
+  },
+};
 
 // Center of Cagayan de Oro City
 const CDO_CENTER: [number, number] = [8.4822, 124.6473];
@@ -54,27 +99,27 @@ export const MapView: React.FC<MapViewProps> = ({
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showSummaryCard, setShowSummaryCard] = useState(true);
 
-  // Initialize Map
+  // Active Map Tile Style state (defaults to standard OpenStreetMap)
+  const [mapStyle, setMapStyle] = useState<MapTileStyle>('osm');
+  const [showLayerPicker, setShowLayerPicker] = useState(false);
+
+  // Initialize Map with OpenStreetMap + Leaflet
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
       center: CDO_CENTER,
       zoom: DEFAULT_ZOOM,
-      zoomControl: false, // Custom controls
+      zoomControl: false, // Custom accessible controls
     });
 
     mapInstanceRef.current = map;
 
-    // Clean light Carto Positron tiles matching reference UI
-    const tileUrl = highContrast
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-    const tileLayer = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    // Standard OpenStreetMap Tile Layer
+    const activeConfig = highContrast ? TILE_CONFIGS.dark : TILE_CONFIGS[mapStyle];
+    const tileLayer = L.tileLayer(activeConfig.url, {
+      maxZoom: activeConfig.maxZoom,
+      attribution: activeConfig.attribution,
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
@@ -98,25 +143,21 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, []);
 
-  // Update Tile Layer when High Contrast mode toggles
+  // Update Tile Layer when mapStyle or High Contrast mode toggles
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
 
     const map = mapInstanceRef.current;
     map.removeLayer(tileLayerRef.current);
 
-    const tileUrl = highContrast
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-    const newLayer = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    const activeConfig = highContrast ? TILE_CONFIGS.dark : TILE_CONFIGS[mapStyle];
+    const newLayer = L.tileLayer(activeConfig.url, {
+      maxZoom: activeConfig.maxZoom,
+      attribution: activeConfig.attribution,
     }).addTo(map);
 
     tileLayerRef.current = newLayer;
-  }, [highContrast]);
+  }, [mapStyle, highContrast]);
 
   // Render Location Markers
   useEffect(() => {
@@ -319,23 +360,87 @@ export const MapView: React.FC<MapViewProps> = ({
         ref={mapContainerRef}
         className="w-full h-full min-h-[350px]"
         tabIndex={0}
-        aria-label="Interactive Accessibility Map of Cagayan de Oro"
+        aria-label="Interactive OpenStreetMap and Leaflet map of Cagayan de Oro"
       />
 
-      {/* Prominent City Header Title Watermark (Matching 📍 Stockholm in Reference UI) */}
-      <div className="absolute top-5 left-5 sm:left-7 z-[500] pointer-events-none select-none flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold text-sm shadow-lg pointer-events-auto">
-          <MapPin className="w-4 h-4 text-white" />
+      {/* Prominent City Header Title Watermark & OpenStreetMap + Leaflet service badge */}
+      <div className="absolute top-5 left-5 sm:left-7 z-[500] pointer-events-none select-none flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold text-sm shadow-lg pointer-events-auto">
+            <MapPin className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 drop-shadow-xs">
+              Cagayan de Oro
+            </h2>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 drop-shadow-xs">
-            Cagayan de Oro
-          </h2>
+
+        {/* Free OpenStreetMap + Leaflet Service Tag */}
+        <div className="flex items-center gap-1.5 pl-1">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-white/95 text-emerald-800 border border-emerald-300 shadow-xs pointer-events-auto flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            <span>OpenStreetMap + Leaflet</span>
+            <span className="text-slate-400 font-normal">| Free & Active</span>
+          </span>
         </div>
       </div>
 
-      {/* Floating Map Controls in Top Right (Matching Reference UI buttons) */}
+      {/* Floating Map Controls in Top Right */}
       <div className="absolute top-5 right-5 sm:right-7 z-[500] flex items-center gap-2">
+        {/* Layer Switcher (OpenStreetMap Standard / Positron / Humanitarian / Dark) */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowLayerPicker(!showLayerPicker)}
+            className={`h-10 px-3 bg-white/95 backdrop-blur-xs hover:bg-white text-slate-800 rounded-2xl shadow-md border flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer text-xs font-bold ${
+              showLayerPicker ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200/90'
+            }`}
+            title="Switch OpenStreetMap tile layer"
+            aria-label="Switch map layer"
+            aria-expanded={showLayerPicker}
+          >
+            <Layers className="w-4 h-4 text-sky-600" />
+            <span className="hidden sm:inline">{TILE_CONFIGS[mapStyle].label}</span>
+          </button>
+
+          {/* Layer selection dropdown menu */}
+          {showLayerPicker && (
+            <div className="absolute top-12 right-0 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 space-y-1 z-[600] animate-scale-up">
+              <span className="block px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Choose Free Map Service:
+              </span>
+              {(Object.keys(TILE_CONFIGS) as MapTileStyle[]).map((key) => {
+                const config = TILE_CONFIGS[key];
+                const isActive = mapStyle === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setMapStyle(key);
+                      setShowLayerPicker(false);
+                      announce(`Map layer changed to ${config.name}`);
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-left transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-sky-50 text-sky-800 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{config.name}</span>
+                    {isActive && <Check className="w-4 h-4 text-sky-600 shrink-0" />}
+                  </button>
+                );
+              })}
+              <div className="pt-2 px-3 pb-1 border-t border-slate-100 text-[11px] text-slate-500">
+                All tile layers are 100% open-source, free, and require no API key.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* GPS Locate Me */}
         <button
           type="button"
           onClick={handleLocateMe}
@@ -347,6 +452,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <Locate className={`w-4 h-4 ${isLocating ? 'animate-spin text-sky-600' : 'text-slate-700'}`} />
         </button>
 
+        {/* CDO Center */}
         <button
           type="button"
           onClick={handleResetCenter}
@@ -357,6 +463,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <Crosshair className="w-4 h-4 text-slate-700" />
         </button>
 
+        {/* Zoom controls */}
         <div className="flex items-center bg-white/95 backdrop-blur-xs rounded-2xl shadow-md border border-slate-200/90 overflow-hidden">
           <button
             type="button"
