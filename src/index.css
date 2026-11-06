@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Leaflet marker & map styling helpers */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  z-index: 10;
+}
+
+/* Custom Marker Pin Classes */
+.custom-pin-marker {
+  background: transparent;
+  border: none;
+}
+
+.pin-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 2.5px solid #ffffff;
+}
+
+.pin-bubble:hover, .pin-bubble:focus-visible {
+  transform: scale(1.18);
+  outline: 3px solid #0284c7;
+  outline-offset: 2px;
+}
+
+/* Accessibility High Contrast Mode overrides */
+body.high-contrast {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.high-contrast * {
+  border-color: #ffffff !important;
+}
+
+body.high-contrast .bg-white {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+body.high-contrast .bg-slate-50,
+body.high-contrast .bg-slate-100 {
+  background-color: #1a1a1a !important;
+}
+
+body.high-contrast .text-slate-600,
+body.high-contrast .text-slate-500,
+body.high-contrast .text-slate-400 {
+  color: #e2e8f0 !important;
+}
+
+body.high-contrast button,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea {
+  outline-color: #facc15 !important;
+}
+
+/* Accessible focus visible outlines */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
