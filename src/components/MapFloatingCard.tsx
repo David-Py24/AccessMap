@@ -6,15 +6,8 @@
 import React from 'react';
 import { LocationPin } from '../types/accessibility';
 import { calculateDistanceKm } from '../utils/storage';
-import {
-  CheckCircle2,
-  Sparkles,
-  AlertTriangle,
-  ArrowRight,
-  MapPin,
-  ExternalLink,
-  X,
-} from 'lucide-react';
+import { Badge } from './ui/Badge';
+import { ArrowRight, X } from 'lucide-react';
 
 interface MapFloatingCardProps {
   location: LocationPin | null;
@@ -45,7 +38,7 @@ export const MapFloatingCard: React.FC<MapFloatingCardProps> = ({
       aria-label="Selected location quick status"
       className="absolute bottom-4 sm:bottom-6 left-4 right-4 sm:left-6 sm:right-6 md:left-8 md:right-8 max-w-4xl mx-auto z-[500] bg-white/95 backdrop-blur-md rounded-3xl shadow-xl border border-slate-200/90 p-4 sm:p-5 transition-all animate-slide-up"
     >
-      {/* Top Header Row matching `Order ID #... [IN TRANSIT] ... [Contact courier]` */}
+      {/* Top Header Row */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
@@ -54,28 +47,25 @@ export const MapFloatingCard: React.FC<MapFloatingCardProps> = ({
 
           {/* Status Badge */}
           {isCommunityVerified ? (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black tracking-wide bg-[#bef264] text-slate-950 uppercase shadow-2xs">
-              <CheckCircle2 className="w-3 h-3 text-slate-950" />
-              <span>VERIFIED</span>
-            </span>
+            <Badge variant="verified" size="xs">
+              VERIFIED
+            </Badge>
           ) : location.aiSummary ? (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wide bg-purple-100 text-purple-900 border border-purple-200 uppercase">
-              <Sparkles className="w-3 h-3 text-purple-600" />
-              <span>AI SCAN</span>
-            </span>
+            <Badge variant="ai-suggested" size="xs">
+              AI SCAN
+            </Badge>
           ) : location.averageRating < 2.5 && location.averageRating > 0 ? (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black tracking-wide bg-rose-100 text-rose-800 border border-rose-200 uppercase">
-              <AlertTriangle className="w-3 h-3 text-rose-700" />
-              <span>BARRIERS</span>
-            </span>
+            <Badge variant="barrier" size="xs">
+              BARRIERS
+            </Badge>
           ) : (
-            <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100 text-slate-700">
+            <Badge variant="neutral" size="xs">
               {location.averageRating > 0 ? `${location.averageRating.toFixed(1)} ★` : 'PENDING'}
-            </span>
+            </Badge>
           )}
         </div>
 
-        {/* Action Button matching `[Contact courier]` in reference */}
+        {/* Action Button */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
@@ -101,7 +91,7 @@ export const MapFloatingCard: React.FC<MapFloatingCardProps> = ({
       {/* Horizontal Divider */}
       <hr className="my-3 border-slate-200/80" />
 
-      {/* 5-Column Metric Row matching reference: From | To | Current Location | Distance | Last Stop */}
+      {/* 5-Column Metric Row */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-left">
         <div>
           <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">

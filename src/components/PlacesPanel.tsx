@@ -15,8 +15,6 @@ import {
   X,
   SlidersHorizontal,
   Check,
-  RotateCcw,
-  Sparkles,
 } from 'lucide-react';
 
 export type PlacesTab = 'all' | 'verified' | 'barriers';

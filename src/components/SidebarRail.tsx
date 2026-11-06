@@ -14,8 +14,6 @@ import {
   Type,
   RotateCcw,
   SlidersHorizontal,
-  Layers,
-  HelpCircle,
 } from 'lucide-react';
 
 interface SidebarRailProps {

@@ -5,19 +5,12 @@
 
 import React from 'react';
 import { LocationPin } from '../types/accessibility';
-import { getRatingColor, calculateDistanceKm } from '../utils/storage';
-import { getTagIcon } from '../utils/tagHelpers';
+import { calculateDistanceKm } from '../utils/storage';
+import { Badge } from './ui/Badge';
 import {
-  ShieldCheck,
   Sparkles,
-  Star,
-  MapPin,
   ChevronDown,
-  MessageSquare,
   ExternalLink,
-  CheckCircle2,
-  AlertTriangle,
-  User,
 } from 'lucide-react';
 
 interface LocationCardProps {
@@ -37,8 +30,6 @@ export const LocationCard: React.FC<LocationCardProps> = ({
   onRunAIScan,
   userCoords,
 }) => {
-  const ratingMeta = getRatingColor(location.averageRating, location.totalReviews);
-
   const distanceKm = userCoords
     ? calculateDistanceKm(userCoords.lat, userCoords.lng, location.lat, location.lng)
     : calculateDistanceKm(8.4822, 124.6473, location.lat, location.lng);
@@ -56,7 +47,24 @@ export const LocationCard: React.FC<LocationCardProps> = ({
       ? location.reviews[0].authorName
       : 'Community Volunteer';
 
-  // If selected, render the prominent expanded card matching the reference UI
+  const renderStatusBadge = () => {
+    if (isCommunityVerified) {
+      return <Badge variant="verified">VERIFIED ACCESS</Badge>;
+    }
+    if (location.aiSummary) {
+      return <Badge variant="ai-suggested">AI STOREFRONT SCAN</Badge>;
+    }
+    if (location.averageRating < 2.5 && location.averageRating > 0) {
+      return <Badge variant="barrier">BARRIER REPORTED</Badge>;
+    }
+    return (
+      <Badge variant="neutral">
+        {location.averageRating > 0 ? `${location.averageRating.toFixed(1)} ★` : 'PENDING'}
+      </Badge>
+    );
+  };
+
+  // If selected, render the prominent expanded card
   if (isSelected) {
     return (
       <article
@@ -65,7 +73,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
         role="region"
         aria-label={`Selected location: ${location.name}`}
       >
-        {/* Top Place Name & Status */}
+        {/* Top Place Name & ID */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
@@ -77,28 +85,9 @@ export const LocationCard: React.FC<LocationCardProps> = ({
           </div>
         </div>
 
-        {/* Status Pill Badge (Vivid lime/chartreuse or purple) */}
+        {/* Status Pill Badge */}
         <div className="mt-3 flex items-center justify-start">
-          {isCommunityVerified ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide bg-[#bef264] text-slate-950 uppercase shadow-2xs">
-              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
-              <span>VERIFIED ACCESS</span>
-            </span>
-          ) : location.aiSummary ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-purple-100 text-purple-900 border border-purple-200 uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-purple-700" />
-              <span>AI STOREFRONT SCAN</span>
-            </span>
-          ) : location.averageRating < 2.5 && location.averageRating > 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide bg-rose-100 text-rose-800 border border-rose-200 uppercase">
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
-              <span>BARRIER REPORTED</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-slate-100 text-slate-800 uppercase">
-              <span>{location.averageRating > 0 ? 'COMMUNITY RATED' : 'UNRATED PLACE'}</span>
-            </span>
-          )}
+          {renderStatusBadge()}
         </div>
 
         {/* Progress / Rating indicator bar */}
@@ -111,7 +100,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
           />
         </div>
 
-        {/* 4-Column Metric Grid matching the reference UI */}
+        {/* 4-Column Metric Grid */}
         <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-4 gap-2 text-left">
           <div>
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -150,7 +139,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
           </div>
         </div>
 
-        {/* Reviewer / Contributor Row matching the reference */}
+        {/* Reviewer / Contributor Row */}
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
@@ -211,7 +200,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
     );
   }
 
-  // Normal Inactive Card matching the reference list items
+  // Normal Inactive Card
   return (
     <article
       onClick={() => onSelect(location)}
@@ -243,23 +232,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
 
       {/* Status Pill on the Right */}
       <div className="shrink-0">
-        {isCommunityVerified ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide bg-[#bef264] text-slate-950 uppercase shadow-2xs">
-            VERIFIED
-          </span>
-        ) : location.aiSummary ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-purple-100 text-purple-900 uppercase">
-            AI-SCAN
-          </span>
-        ) : location.averageRating < 2.5 && location.averageRating > 0 ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-rose-100 text-rose-800 uppercase">
-            BARRIERS
-          </span>
-        ) : (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-slate-100 text-slate-700">
-            {location.averageRating > 0 ? `${location.averageRating.toFixed(1)} ★` : 'PENDING'}
-          </span>
-        )}
+        {renderStatusBadge()}
       </div>
     </article>
   );
