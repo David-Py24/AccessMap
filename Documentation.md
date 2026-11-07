@@ -100,6 +100,46 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
   - **Live GPS Sync**: Added real-time coordinates bar with one-click **"Locate Me (GPS)"** synchronization.
   - **Community Verification Agreement**: Tailored permissions to community dispute and confirmation consensus on the Cagayan de Oro map.
 
+### `2026-11-06 17:15:00` — Dependency Conflict Resolution & Environment Setup
+- **Event**: Resolved npm dependency resolution failure (`ERESOLVE`) on fresh install.
+- **Decisions & Fixes**:
+  - Diagnosed that `package.json` had pinned `esbuild: "^0.25.0"` whereas `vite: "^8.3.0"` had an optional peer requirement of `esbuild: "^0.27.0 || ^0.28.0"`, causing npm 10+ to abort installation.
+  - Updated `package.json` devDependencies to `"esbuild": "^0.28.0"`.
+  - Audited transitive deprecation warning (`node-domexception@1.0.0` from `@google/genai -> google-auth-library -> gaxios -> node-fetch -> fetch-blob`) confirming it is non-blocking informational notice with zero vulnerabilities.
+  - Executed successful `npm install` establishing full `node_modules` and TypeScript compiler definitions.
+
+### `2026-11-06 17:25:00` — Modular Component Reconstruction & UI Primitives
+- **Event**: Re-constructed all monolithic component files (500+ lines each) into single-responsibility sub-components and shared UI primitives.
+- **Decisions & Implementation**:
+  - **Created Shared UI Primitives (`/src/components/ui/`)**:
+    - `Modal.tsx`: Accessible dialog wrapper with backdrop blur, ESC key dismiss, focus trapping, and header/footer slots.
+    - `StarRating.tsx`: 1–5 star rating supporting interactive selection, read-only display, customizable sizes (`sm`, `md`, `lg`), and label formatting.
+    - `Badge.tsx`: Design-system badges (`verified`, `ai-suggested`, `barrier`, `neutral`, `category`) with unified styling and icons.
+    - `PhotoUploader.tsx`: File upload dropzone with thumbnail preview, removal, and base64 data URL conversion.
+  - **Reconstructed `AddLocationModal.tsx` (571 lines ➔ 239 lines)**:
+    - Sub-components extracted to `/src/components/add-location/`:
+      - `CoordinatesField.tsx`: GPS geolocation detection, coordinates badge, and map dragging helper.
+      - `PlaceInfoFields.tsx`: Place name, category dropdown, and address/landmark inputs.
+      - `TagRatingSection.tsx`: Chip toggles, custom tag addition, and per-feature star ratings.
+      - `ReviewDetailsSection.tsx`: Overall star rating, author name, review comment, and photo upload.
+  - **Reconstructed `AIStorefrontModal.tsx` (560 lines ➔ 216 lines)**:
+    - Sub-components extracted to `/src/components/storefront/`:
+      - `PhotoInputSection.tsx`: Drag-and-drop upload, preset sample storefront quick picker (`SAMPLE_STOREFRONTS`), and photo preview with analysis trigger.
+      - `AnalysisResultsSection.tsx`: Architectural assessment summary, confidence progress bars with visual evidence, identified physical obstacles alert box, accepted/rejected tag checklists, and target location selector.
+  - **Reconstructed `LocationDetailDrawer.tsx` (562 lines ➔ 166 lines)**:
+    - Sub-components extracted to `/src/components/location-detail/`:
+      - `LocationOverviewCard.tsx`: Photo preview, address/directions link, and overall accessibility score banner.
+      - `AiAnalysisSection.tsx`: Gemini Vision assessment and reported physical obstacles.
+      - `TagVotingList.tsx`: Community verification list with "Confirm" / "Dispute" voting buttons and badge styling.
+      - `ReviewSection.tsx`: User review history and review submission form with feature ratings.
+  - **Refactored `LocationCard.tsx` & `MapFloatingCard.tsx`**:
+    - Standardized on the shared `Badge` primitive.
+    - Removed unused imports (`Layers`, `Search`, `MessageSquare`, `User`, `getTagIcon`, `ShieldCheck`) and tightened TypeScript typing.
+  - **Verification**:
+    - `npm run lint` (`tsc --noEmit`): **0 errors** across the entire workspace.
+    - `npm run build` (`vite build`): Full production client build generated in `dist/` in **733ms**.
+    - Local server startup validated with `npm run start` (`tsx server.ts` Express + Vite middleware on port 3000).
+
 ---
 
 ## 3. Architecture & File Structure
@@ -110,6 +150,7 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
 ├── index.html                            # HTML entry point with Leaflet styles & meta tags
 ├── metadata.json                         # Project metadata and server capabilities
 ├── package.json                          # Dependencies & build scripts (tsx server.ts)
+├── package-lock.json                     # Locked dependency tree
 ├── server.ts                             # Express backend + Gemini multimodal API proxy
 ├── tsconfig.json                         # TypeScript configuration
 ├── vite.config.ts                        # Vite configuration
@@ -118,16 +159,34 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
     ├── index.css                         # Global CSS, Leaflet styles & animations
     ├── main.tsx                          # React entry point
     ├── components/
-    │   ├── AddLocationModal.tsx          # Add Location dialog matching Form Reference UI
-    │   ├── AIStorefrontModal.tsx         # Standalone multimodal Gemini storefront scanner
-    │   ├── FilterBar.tsx                 # Search & multi-tag filter component
-    │   ├── LocationCard.tsx              # Card component with active expanded metric grid
+    │   ├── AddLocationModal.tsx          # Reconstructed modular Add Location dialog
+    │   ├── AIStorefrontModal.tsx         # Reconstructed multimodal Gemini storefront scanner
+    │   ├── FilterBar.tsx                 # Search & multi-tag filter component (legacy desktop)
+    │   ├── LocationCard.tsx              # Card component with active/inactive visual states
     │   ├── LocationDetailDrawer.tsx      # Slideout panel for reviews & community voting
     │   ├── MapFloatingCard.tsx           # Floating bottom summary card matching reference
     │   ├── MapView.tsx                   # Leaflet map with OpenStreetMap layer switcher
-    │   ├── Navbar.tsx                    # Top navigation & view switcher
+    │   ├── Navbar.tsx                    # Top navigation & view switcher (legacy desktop)
     │   ├── PlacesPanel.tsx               # Left docked places panel with segmented pill control
-    │   └── SidebarRail.tsx               # Leftmost icon navigation rail
+    │   ├── SidebarRail.tsx               # Leftmost icon navigation rail
+    │   ├── ui/                           # Shared foundational UI primitives
+    │   │   ├── Badge.tsx                 # Standardized status badges (verified, AI, barrier)
+    │   │   ├── Modal.tsx                 # Accessible dialog wrapper with backdrop and ESC handler
+    │   │   ├── PhotoUploader.tsx         # Photo dropzone with preview and base64 parsing
+    │   │   └── StarRating.tsx            # Interactive & read-only 1–5 star ratings
+    │   ├── add-location/                 # Sub-components for AddLocationModal
+    │   │   ├── CoordinatesField.tsx      # GPS geolocation detection and coordinate badge
+    │   │   ├── PlaceInfoFields.tsx       # Venue name, category, and address inputs
+    │   │   ├── ReviewDetailsSection.tsx  # Overall rating, author, notes, and photo attachment
+    │   │   └── TagRatingSection.tsx      # Tag chips, custom tag input, and feature ratings
+    │   ├── storefront/                   # Sub-components for AIStorefrontModal
+    │   │   ├── AnalysisResultsSection.tsx# AI assessment, confidence gauges, and tag acceptance
+    │   │   └── PhotoInputSection.tsx     # File upload, test storefront samples, and preview
+    │   └── location-detail/              # Sub-components for LocationDetailDrawer
+    │       ├── AiAnalysisSection.tsx     # AI assessment card and reported barriers
+    │       ├── LocationOverviewCard.tsx  # Photo, address, directions link, and score card
+    │       ├── ReviewSection.tsx         # Community review list and submit review form
+    │       └── TagVotingList.tsx         # Tag verification list with confirm/dispute voting
     ├── context/
     │   └── A11yContext.tsx               # Text scale, high-contrast, & screen-reader live region
     ├── data/
@@ -193,4 +252,8 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
 - [x] Mobile-responsive UI adapted from `UI_Referrence_8c48ae05.jpg`.
 - [x] Map Layer Switcher for OpenStreetMap Standard, Humanitarian, Carto Positron, and Dark Matter.
 - [x] Add Location Form adapted from `Form_Referrence_e36981fe.jpg`.
-- [x] Full compilation and zero-error TypeScript linting.
+- [x] Resolved npm `esbuild` peer dependency conflict with Vite.
+- [x] Modular reconstruction of monolithic components into `/src/components/ui/`, `/add-location/`, `/storefront/`, and `/location-detail/`.
+- [x] Standardized UI primitives (`Modal`, `StarRating`, `Badge`, `PhotoUploader`).
+- [x] Full compilation and zero-error TypeScript linting (`tsc --noEmit`).
+- [x] Verified production build (`vite build` in 733ms) and local server startup (`npm run start`).
