@@ -52,8 +52,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand identity */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-sm shrink-0">
-            <Accessibility className="w-6 h-6" aria-hidden="true" />
+          <div className="w-10 h-10 rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-sm shrink-0 p-2">
+            <img
+              src="/logo-white.png"
+              alt="Crowdsourced Accessibility Map Logo"
+              className="w-6 h-6 object-contain"
+            />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">

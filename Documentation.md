@@ -140,6 +140,62 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
     - `npm run build` (`vite build`): Full production client build generated in `dist/` in **733ms**.
     - Local server startup validated with `npm run start` (`tsx server.ts` Express + Vite middleware on port 3000).
 
+### `2026-11-07 14:40:00` — Crowdsourced Accessibility Map Official Logo Integration
+- **Event**: Integrated custom origami folded-map and location pin logo brand assets across the application.
+- **Decisions & Implementation**:
+  - **Asset Extraction & Generation**:
+    - Extracted and processed the brand logo from the user's provided artwork.
+    - Generated high-resolution transparent assets:
+      - `public/logo-dark.png` & `public/logo.png`: Dark charcoal (`#1e293b`) vector-clean mark on transparent background.
+      - `public/logo-white.png`: Clean crisp pure-white mark for dark squircle / sidebar backgrounds.
+      - `public/logo-original.jpg`: Original artwork preserved in full fidelity.
+      - `public/favicon-32x32.png` & `public/favicon.png`: Crisp 32x32 and 64x64 browser tabs favicons.
+      - `public/app-icon.png`: 512x512 PWA / Open Graph / Apple Touch application icon.
+  - **Component Integration**:
+    - Created reusable `src/components/ui/AppLogo.tsx` supporting `dark`, `light`, `original`, and `squircle` branding variants with responsive brand text.
+    - Updated `SidebarRail.tsx` top brand button: Replaced generic Accessibility icon with the official white brand mark inside the dark rounded squircle with hover animation.
+    - Updated `Navbar.tsx` brand header: Updated logo icon container with the official white brand mark.
+    - Updated `MapView.tsx`: Enhanced the city header watermark badge to feature the official logo mark.
+    - Updated `index.html`: Added 32x32/16x16 favicon links, Apple touch icon, and Open Graph image tags.
+
+### `2026-11-09 09:45:00` — Server Components Decoupling & Pure Frontend SPA Architecture
+- **Event**: Decommissioned backend server layer (`server.ts`) in favor of a 100% static client-side single page application (SPA), preserving GitHub Actions workflows and all frontend components.
+- **Decisions & Implementation**:
+  - **Server Code & Dependencies Removal**:
+    - Removed `server.ts` Express server file and server-only dependencies (`express`, `@types/express`, `dotenv`, `tsx`, `@google/genai`) from `package.json`.
+    - Streamlined npm scripts to standard Vite commands: `"dev": "vite"`, `"build": "vite build"`, `"preview": "vite preview"`.
+  - **Client-Side AI Storefront Simulation**:
+    - Extracted storefront multimodal AI inspection logic into `src/utils/storefrontAnalysis.ts`, eliminating backend endpoint dependency (`/api/analyze-storefront`) and allowing instant previewing in static hosting environments.
+  - **Relative Asset Paths (`base: './'`) for Portable Previews**:
+    - Configured `base: './'` in `vite.config.ts` so production assets (`dist/index.html`) resolve with relative URLs (`./assets/...`), allowing seamless previewing via VS Code Live Server, GitHub Pages, or subfolder static servers without root path 404s.
+  - **Workflow Preservation**:
+    - Preserved existing `.github/workflows` sync pipelines (`sync-frontend-arch-to-main.yml` and `sync-main-to-frontend-arch.yml`).
+
+### `2026-11-09 10:35:00` — Neo-Brutalist Collapsible Sidebar Navigation Layout Implementation
+- **Event**: Implemented a modern neo-brutalist collapsible sidebar navigation inspired by `sidebar.html`.
+- **Decisions & Implementation**:
+  - **Typography & Visual Tokens**:
+    - Integrated Google Font **Space Grotesk** (`400`, `500`, `600`, `700`) into `index.html` and `src/index.css`.
+    - Applied custom color palette: Deep Forest Teal (`#21524B`), Mint highlight (`#E7F2F0`), Dark Ink borders (`#0F172A`, 1.5px with `0 2px 0` shadows), and Soft slate (`#475569`).
+  - **Collapsible Navigation Rail**:
+    - Dynamic expansion between 248px (full mode) and 68px (compact icon mode) with state toggling.
+    - Included official vector SVG symbol sprite definitions matching the exact stroke radius and geometry.
+  - **Sections & Features**:
+    - **Header**: Official origami pin logo squircle badge with brand title and collapse toggle.
+    - **Workspace Card**: "My workspace / Alex David" with user avatar (`AD`) and chevron indicator.
+    - **Primary Tabs**: `Community` with green `BETA` badge, `Dashboard`, and `Messages`.
+    - **Identity Section**: `Profile`, `Saved places`, and `Contribution history`.
+    - **Explore Section**: `Map view`, `AI vision`, and `Add place`.
+    - **Settings Section**: `Tags & badges` and `Filter settings`.
+    - **Promo Footer**: "Invite a mapper · Bring neighbors in to verify places" with copy-to-clipboard action and visual feedback.
+
+### `2026-11-09 10:48:00` — Sidebar Icon-Buttons Cleanup & Streamlined Settings Footer
+- **Event**: Removed the utility icon-buttons row (`T` text size scaling, `Eye` high contrast mode, and `Refresh` seed data reset) from the sidebar footer per design alignment with `sidebar.html`.
+- **Decisions & Implementation**:
+  - Removed the bottom utility button container and unneeded SVG symbols (`#i-type`, `#i-eye`, `#i-refresh`) from `src/components/SidebarRail.tsx`.
+  - Streamlined `SidebarRail.tsx` imports and component props, maintaining high performance and zero lint warnings.
+  - Re-verified full project compilation with `npm run lint` (`0` errors) and `npm run build` (**633ms**).
+
 ---
 
 ## 3. Architecture & File Structure
@@ -147,16 +203,16 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
 ```
 ├── .env.example                          # Environment variable template
 ├── Documentation.md                      # Comprehensive progress log & hourly documentation
-├── index.html                            # HTML entry point with Leaflet styles & meta tags
+├── index.html                            # HTML entry point with Space Grotesk, Leaflet styles & meta tags
 ├── metadata.json                         # Project metadata and server capabilities
-├── package.json                          # Dependencies & build scripts (tsx server.ts)
+├── package.json                          # Dependencies & Vite build scripts
 ├── package-lock.json                     # Locked dependency tree
-├── server.ts                             # Express backend + Gemini multimodal API proxy
+├── sidebar.html                          # Reference neo-brutalist sidebar template
 ├── tsconfig.json                         # TypeScript configuration
-├── vite.config.ts                        # Vite configuration
+├── vite.config.ts                        # Vite configuration with relative base and ESM path resolution
 └── src/
     ├── App.tsx                           # Master application shell & state coordinator
-    ├── index.css                         # Global CSS, Leaflet styles & animations
+    ├── index.css                         # Global CSS, Space Grotesk tokens & Leaflet styles
     ├── main.tsx                          # React entry point
     ├── components/
     │   ├── AddLocationModal.tsx          # Reconstructed modular Add Location dialog
@@ -168,8 +224,9 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
     │   ├── MapView.tsx                   # Leaflet map with OpenStreetMap layer switcher
     │   ├── Navbar.tsx                    # Top navigation & view switcher (legacy desktop)
     │   ├── PlacesPanel.tsx               # Left docked places panel with segmented pill control
-    │   ├── SidebarRail.tsx               # Leftmost icon navigation rail
+    │   ├── SidebarRail.tsx               # Neo-brutalist collapsible primary navigation rail
     │   ├── ui/                           # Shared foundational UI primitives
+    │   │   ├── AppLogo.tsx               # Official origami map and pin logo variants
     │   │   ├── Badge.tsx                 # Standardized status badges (verified, AI, barrier)
     │   │   ├── Modal.tsx                 # Accessible dialog wrapper with backdrop and ESC handler
     │   │   ├── PhotoUploader.tsx         # Photo dropzone with preview and base64 parsing
@@ -255,5 +312,10 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
 - [x] Resolved npm `esbuild` peer dependency conflict with Vite.
 - [x] Modular reconstruction of monolithic components into `/src/components/ui/`, `/add-location/`, `/storefront/`, and `/location-detail/`.
 - [x] Standardized UI primitives (`Modal`, `StarRating`, `Badge`, `PhotoUploader`).
+- [x] Official origami map & pin logo assets generated and integrated across Sidebar, Navbar, Map, and HTML Favicon.
+- [x] Decoupled backend Express server (`server.ts`) to enable pure static SPA hosting with GitHub workflows preserved.
+- [x] Configured relative base paths (`base: './'`) in Vite for portable local and web previews.
+- [x] Implemented neo-brutalist collapsible sidebar navigation with Space Grotesk typography and SVG vector sprites (`sidebar.html`).
+- [x] Streamlined sidebar footer by removing redundant accessibility icon buttons (`T`, `Eye`, `Refresh`) for a cleaner design.
 - [x] Full compilation and zero-error TypeScript linting (`tsc --noEmit`).
-- [x] Verified production build (`vite build` in 733ms) and local server startup (`npm run start`).
+- [x] Verified fast production bundle build (`vite build` in 633ms).

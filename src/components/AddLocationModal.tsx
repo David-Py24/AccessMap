@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { STANDARD_ACCESSIBILITY_TAGS } from '../prompts/storefrontPrompt';
+import { analyzeStorefront } from '../utils/storefrontAnalysis';
 import {
   CategoryType,
   LocationPin,
@@ -168,17 +169,7 @@ export const AddLocationModal: React.FC<AddLocationModalProps> = ({
     announce('Analyzing storefront accessibility with Gemini AI...');
 
     try {
-      const res = await fetch('/api/analyze-storefront', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: photoUrl }),
-      });
-
-      if (!res.ok) {
-        throw new Error('AI analysis failed');
-      }
-
-      const data: StorefrontAnalysisResult = await res.json();
+      const data: StorefrontAnalysisResult = await analyzeStorefront(photoUrl);
       setAiSummary(data.summary);
       setAiBarriers(data.possible_barriers);
 

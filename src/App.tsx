@@ -25,7 +25,50 @@ import {
   getStoredUserVotes,
   saveStoredUserVote,
 } from './utils/storage';
-import { MapPin, Sparkles, Plus, Layers } from 'lucide-react';
+import { MapPin, Sparkles, Plus, Layers, ArrowLeft, ExternalLink } from 'lucide-react';
+
+const PROTOTYPE_ROUTES: Record<string, { title: string; subtitle: string; url: string }> = {
+  profile: {
+    title: 'Profile & Account Settings',
+    subtitle: 'Manage your profile, verified accessibility contributions, and badges',
+    url: '/prototypes/profile-account/index.html',
+  },
+  community: {
+    title: 'Community Leaderboard',
+    subtitle: 'Top urban accessibility contributors and community consensus verifiers',
+    url: '/prototypes/leaderboard/index.html',
+  },
+  messages: {
+    title: 'Messages & Outreach',
+    subtitle: 'Direct conversations with local accessibility mappers and community verifiers',
+    url: '/prototypes/messages/index.html',
+  },
+  saved: {
+    title: 'Saved Places',
+    subtitle: 'Bookmarked accessible venues, ramps, and personal collections',
+    url: '/prototypes/saved-places/index.html',
+  },
+  contributions: {
+    title: 'Contribution History',
+    subtitle: 'Your crowdsourced photo uploads, reviews, and community votes',
+    url: '/prototypes/contributions/index.html',
+  },
+  settings: {
+    title: 'Profile Settings',
+    subtitle: 'Accessibility preferences and display configurations',
+    url: '/prototypes/profile-settings/index.html',
+  },
+  landing: {
+    title: 'AccessMap Public Portal',
+    subtitle: 'Urban accessibility showcase and mission overview',
+    url: '/prototypes/landing/index.html',
+  },
+  signin: {
+    title: 'Contributor Sign In',
+    subtitle: 'Authentication and account access portal',
+    url: '/prototypes/sign-in/index.html',
+  },
+};
 
 function AccessMapApp() {
   const { announce } = useA11y();
@@ -55,7 +98,7 @@ function AccessMapApp() {
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
 
   // Active navigation tab
-  const [activeNavTab, setActiveNavTab] = useState<'map' | 'saved'>('map');
+  const [activeNavTab, setActiveNavTab] = useState<string>('map');
 
   // Mobile / Filter panel toggle
   const [isPlacesPanelOpen, setIsPlacesPanelOpen] = useState(true);
@@ -304,39 +347,8 @@ function AccessMapApp() {
       />
 
       {/* Floating / Docked Places Panel (Matching Reference UI "Packages" panel) */}
-      <PlacesPanel
-        locations={filteredLocations}
-        selectedLocation={selectedLocation}
-        onSelectLocation={(loc) => {
-          setSelectedLocation(loc);
-        }}
-        onOpenDetails={(loc) => {
-          setSelectedLocation(loc);
-          setIsDetailDrawerOpen(true);
-        }}
-        onRunAIScan={(loc) => {
-          setAiTargetLocation(loc);
-          setIsAIModalOpen(true);
-        }}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        selectedTags={selectedTags}
-        onToggleTag={(tag) => {
-          setSelectedTags((prev) =>
-            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-          );
-        }}
-        onClearTags={() => setSelectedTags([])}
-        userCoords={userCoords}
-        onResetData={handleResetData}
-        isOpen={isPlacesPanelOpen}
-      />
-
-      {/* Main Map Canvas Area */}
-      <main className="flex-1 h-full relative overflow-hidden bg-slate-200">
-        <MapView
+      {!PROTOTYPE_ROUTES[activeNavTab] && (
+        <PlacesPanel
           locations={filteredLocations}
           selectedLocation={selectedLocation}
           onSelectLocation={(loc) => {
@@ -346,25 +358,110 @@ function AccessMapApp() {
             setSelectedLocation(loc);
             setIsDetailDrawerOpen(true);
           }}
-          isAddingLocation={isAddingLocation}
-          newPinCoords={newPinCoords}
-          onNewPinCoordsChange={(coords) => {
-            setNewPinCoords(coords);
-            if (isAddingLocation) {
-              setIsAddModalOpen(true);
-            }
+          onRunAIScan={(loc) => {
+            setAiTargetLocation(loc);
+            setIsAIModalOpen(true);
           }}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          selectedTags={selectedTags}
+          onToggleTag={(tag) => {
+            setSelectedTags((prev) =>
+              prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+            );
+          }}
+          onClearTags={() => setSelectedTags([])}
+          userCoords={userCoords}
+          onResetData={handleResetData}
+          isOpen={isPlacesPanelOpen}
         />
+      )}
 
-        {/* Mobile toggle button for places panel */}
-        <button
-          type="button"
-          onClick={() => setIsPlacesPanelOpen(!isPlacesPanelOpen)}
-          className="md:hidden absolute bottom-24 right-5 z-[550] px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-full shadow-xl flex items-center gap-1.5 cursor-pointer"
-        >
-          <Layers className="w-4 h-4" />
-          <span>{isPlacesPanelOpen ? 'Hide List' : 'Show List'}</span>
-        </button>
+      {/* Main Map / Prototype Canvas Area */}
+      <main className="flex-1 h-full relative overflow-hidden bg-slate-200">
+        {PROTOTYPE_ROUTES[activeNavTab] ? (
+          <div className="w-full h-full flex flex-col bg-white">
+            {/* Top Navigation Banner */}
+            <div className="flex items-center justify-between px-5 py-3 bg-[#EAF3F7] border-b-2 border-[#0F172A] z-10 shrink-0">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveNavTab('map')}
+                  className="px-3 py-1.5 rounded-xl bg-white border-[1.5px] border-[#0F172A] text-xs font-bold text-[#0F172A] shadow-[0_2px_0_#0F172A] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Return to interactive map"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Map</span>
+                </button>
+                <div>
+                  <h2 className="text-sm font-bold text-[#0F172A] leading-tight">
+                    {PROTOTYPE_ROUTES[activeNavTab].title}
+                  </h2>
+                  <p className="text-[11px] text-[#475569] hidden sm:block">
+                    {PROTOTYPE_ROUTES[activeNavTab].subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="hidden md:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#E7F2F0] text-[#21524B] border border-[#21524B]/30">
+                  External Repo Linked
+                </span>
+                <a
+                  href={PROTOTYPE_ROUTES[activeNavTab].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-white border-[1.5px] border-[#0F172A] text-[11px] font-bold text-[#0F172A] shadow-[0_2px_0_#0F172A] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Open this page in a separate full browser tab"
+                >
+                  <span>Open Fullscreen</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Embedded Live Interface from Sibling Repo */}
+            <iframe
+              src={PROTOTYPE_ROUTES[activeNavTab].url}
+              title={PROTOTYPE_ROUTES[activeNavTab].title}
+              className="w-full flex-1 border-none bg-white"
+            />
+          </div>
+        ) : (
+          <>
+            <MapView
+              locations={filteredLocations}
+              selectedLocation={selectedLocation}
+              onSelectLocation={(loc) => {
+                setSelectedLocation(loc);
+              }}
+              onOpenDetails={(loc) => {
+                setSelectedLocation(loc);
+                setIsDetailDrawerOpen(true);
+              }}
+              isAddingLocation={isAddingLocation}
+              newPinCoords={newPinCoords}
+              onNewPinCoordsChange={(coords) => {
+                setNewPinCoords(coords);
+                if (isAddingLocation) {
+                  setIsAddModalOpen(true);
+                }
+              }}
+            />
+
+            {/* Mobile toggle button for places panel */}
+            <button
+              type="button"
+              onClick={() => setIsPlacesPanelOpen(!isPlacesPanelOpen)}
+              className="md:hidden absolute bottom-24 right-5 z-[550] px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-full shadow-xl flex items-center gap-1.5 cursor-pointer"
+            >
+              <Layers className="w-4 h-4" />
+              <span>{isPlacesPanelOpen ? 'Hide List' : 'Show List'}</span>
+            </button>
+          </>
+        )}
 
         {/* Full Details Slide-out Drawer */}
         {isDetailDrawerOpen && (

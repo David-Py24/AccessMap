@@ -21,6 +21,15 @@ export function loadLocations(): LocationPin[] {
       saveLocations(INITIAL_LOCATIONS);
       return INITIAL_LOCATIONS;
     }
+    // Add newly published seed venues to existing browsers without overwriting
+    // user edits, ratings, or saved community contributions.
+    const existingIds = new Set(parsed.map((location: LocationPin) => location.id));
+    const newlySeeded = INITIAL_LOCATIONS.filter((location) => !existingIds.has(location.id));
+    if (newlySeeded.length > 0) {
+      const merged = [...parsed, ...newlySeeded];
+      saveLocations(merged);
+      return merged;
+    }
     return parsed;
   } catch (err) {
     console.error('Failed to load locations from localStorage:', err);

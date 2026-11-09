@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { LocationPin, StorefrontAnalysisResult } from '../types/accessibility';
+import { analyzeStorefront } from '../utils/storefrontAnalysis';
 import { useA11y } from '../context/A11yContext';
 import { Modal } from './ui/Modal';
 import { PhotoInputSection } from './storefront/PhotoInputSection';
@@ -63,25 +64,7 @@ export const AIStorefrontModal: React.FC<AIStorefrontModalProps> = ({
     announce('Analyzing storefront accessibility with Gemini AI. Please wait a moment.');
 
     try {
-      const isDataUrl = selectedImage.startsWith('data:');
-      const payload = isDataUrl
-        ? { image: selectedImage }
-        : { imageUrl: selectedImage };
-
-      const res = await fetch('/api/analyze-storefront', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Server responded with status ${res.status}: ${res.statusText}`
-        );
-      }
-
-      const data: StorefrontAnalysisResult = await res.json();
+      const data: StorefrontAnalysisResult = await analyzeStorefront(selectedImage);
       data.imagePreviewUrl = selectedImage;
       data.analysisDate = new Date().toISOString();
 

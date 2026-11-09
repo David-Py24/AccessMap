@@ -4,8 +4,9 @@
  */
 
 import { LocationPin } from '../types/accessibility';
+import { MINDANAO_LOCATIONS } from './mindanaoLocations';
 
-export const INITIAL_LOCATIONS: LocationPin[] = [
+const CDO_INITIAL_LOCATIONS: LocationPin[] = [
   {
     id: 'cdo-centrio-mall',
     name: 'Centrio Mall (Ayala Malls)',
@@ -649,6 +650,11 @@ export const INITIAL_LOCATIONS: LocationPin[] = [
     createdAt: '2026-03-01T08:00:00Z',
     updatedAt: '2026-03-01T08:00:00Z',
   },
+];
+
+export const INITIAL_LOCATIONS: LocationPin[] = [
+  ...CDO_INITIAL_LOCATIONS,
+  ...MINDANAO_LOCATIONS,
 ];
 
 export interface SampleStorefront {
