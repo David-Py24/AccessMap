@@ -319,3 +319,12 @@ AccessMap is an open-source, crowdsourced urban accessibility platform designed 
 - [x] Streamlined sidebar footer by removing redundant accessibility icon buttons (`T`, `Eye`, `Refresh`) for a cleaner design.
 - [x] Full compilation and zero-error TypeScript linting (`tsc --noEmit`).
 - [x] Verified fast production bundle build (`vite build` in 633ms).
+
+---
+
+## `2026-11-11 09:00:00` — Project Overview Refinement
+- **Event**: Updated README with concise project details and vision statement.
+- **Decisions**:
+  - Added clear Vision, Target Audience, Core Values, and Stakeholder sections to improve onboarding.
+  - Streamlined introductory description for brevity and impact.
+- **Impact**: Improves first‑time reader comprehension and aligns documentation with project goals.
